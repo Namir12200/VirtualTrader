@@ -1,0 +1,56 @@
+version: '2.2'
+
+services:
+  db:
+    container_name: db
+    image: postgres:16.4-alpine3.20
+    restart: always
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+
+  server:
+    container_name: server
+    build:
+      context: ./TraderApi
+    ports:
+      - 8000:8000
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - SECRET_KEY=${TRADER_SECRET_KEY}
+      - DEBUG=${TRADER_DEBUG}
+      - ALLOWED_HOSTS=${TRADER_ALLOWED_HOSTS}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./TraderApi:/backend/
+
+  client:
+    container_name: client
+    build:
+      context: ./trader-client
+    ports:
+      - 5173:5173
+    volumes:
+      - ./trader-client:/frontend/
+
+volumes:
+  pgdata:
